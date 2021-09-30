@@ -1,0 +1,320 @@
+\documentclass[12pt]{scrartcl}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{.25cm}
+
+\usepackage{graphicx}
+
+\usepackage{xcolor}
+
+\definecolor{darkred}{rgb}{0.5,0,0}
+\definecolor{darkgreen}{rgb}{0,0.5,0}
+\usepackage{hyperref}
+\hypersetup{
+  letterpaper,
+  colorlinks,
+  linkcolor=red,
+  citecolor=darkgreen,
+  menucolor=darkred,
+  urlcolor=blue,
+  pdfpagemode=none,
+  pdftitle={Introduction To Git},
+  pdfauthor={Christopher M. Bourke},
+  pdfcreator={$ $Id: cv-us.tex,v 1.28 2009/01/01 00:00:00 cbourke Exp $ $},
+  pdfsubject={PhD Thesis},
+  pdfkeywords={}
+}
+
+\definecolor{MyDarkBlue}{rgb}{0,0.08,0.45}
+\definecolor{MyDarkRed}{rgb}{0.45,0.08,0}
+\definecolor{MyDarkGreen}{rgb}{0.08,0.45,0.08}
+
+\definecolor{mintedBackground}{rgb}{0.95,0.95,0.95}
+\definecolor{mintedInlineBackground}{rgb}{.90,.90,1}
+
+%\usepackage{newfloat}
+\usepackage[newfloat=true]{minted}
+\setminted{mathescape,
+               linenos,
+               autogobble,
+               frame=none,
+               framesep=2mm,
+               framerule=0.4pt,
+               %label=foo,
+               xleftmargin=2em,
+               xrightmargin=0em,
+               startinline=true,  %PHP only, allow it to omit the PHP Tags *** with this option, variables using dollar sign in comments are treated as latex math
+               numbersep=10pt, %gap between line numbers and start of line
+               style=default, %syntax highlighting style, default is "default"
+               			    %gallery: http://help.farbox.com/pygments.html
+			    	    %list available: pygmentize -L styles
+               bgcolor=mintedBackground} %prevents breaking across pages
+               
+\setmintedinline{bgcolor={mintedBackground}}
+\setminted[text]{bgcolor={mintedBackground},linenos=false,autogobble,xleftmargin=1em}
+%\setminted[php]{bgcolor=mintedBackgroundPHP} %startinline=True}
+\SetupFloatingEnvironment{listing}{name=Code Sample}
+\SetupFloatingEnvironment{listing}{listname=List of Code Samples}
+
+\title{CSCE 155 - C}
+\subtitle{Lab 07 - Arrays \& Dynamic Memory}
+\author{Dr.\ Chris Bourke}
+\date{~}
+
+\begin{document}
+
+\maketitle
+
+\section*{Prior to Lab}
+
+Before attending this lab:
+\begin{enumerate}
+  \item Read and familiarize yourself with this handout.
+  \item Review the following free textbook resources:
+	\begin{itemize}
+  	  \item \url{http://www.cs.cf.ac.uk/Dave/C/node7.html} 
+	  \item \url{http://en.wikibooks.org/wiki/C_Programming/Arrays}
+	  \item \url{http://www.cs.cf.ac.uk/Dave/C/node11.html}
+	  \item \url{http://en.wikibooks.org/wiki/C_Programming/Memory_management}
+	\end{itemize}
+\end{enumerate}
+
+\section*{Peer Programming Pair-Up}
+
+To encourage collaboration and a team environment, labs will be
+structured in a \emph{pair programming} setup.  At the start of
+each lab, you will be randomly paired up with another student 
+(conflicts such as absences will be dealt with by the lab instructor).
+One of you will be designated the \emph{driver} and the other
+the \emph{navigator}.  
+
+The navigator will be responsible for reading the instructions and
+telling the driver what to do next.  The driver will be in charge of the
+keyboard and workstation.  Both driver and navigator are responsible
+for suggesting fixes and solutions together.  Neither the navigator
+nor the driver is ``in charge.''  Beyond your immediate pairing, you
+are encouraged to help and interact and with other pairs in the lab.
+
+Each week you should alternate: if you were a driver last week, 
+be a navigator next, etc.  Resolve any issues (you were both drivers
+last week) within your pair.  Ask the lab instructor to resolve issues
+only when you cannot come to a consensus.  
+
+Because of the peer programming setup of labs, it is absolutely 
+essential that you complete any pre-lab activities and familiarize
+yourself with the handouts prior to coming to lab.  Failure to do
+so will negatively impact your ability to collaborate and work with 
+others which may mean that you will not be able to complete the
+lab.  
+
+\section{Lab Objectives \& Topics}
+At the end of this lab you should be familiar with the following
+\begin{itemize}
+  \item Understand what memory leaks are, how they're caused, 
+  	and how to prevent them
+  \item Declare and fill an array with values
+  \item Access an array's values individually and iterate over the entire array
+  \item Pass an array as a parameter to a function
+  \item Understand the relationship between arrays and pointers
+\end{itemize}
+
+\section{Background}
+
+Arrays hold collections of variable values of a certain type 
+(\mintinline{c}{int} or \mintinline{c}{double} for example).
+Static arrays are arrays whose size is specified at compile 
+time and specified by hardcoding the size when declared.  
+For example:
+
+\mintinline{c}{int array[100];}
+
+This declares an integer array that holds 100 integers (in 
+addition, static arrays are allocated on the program stack 
+while dynamic arrays are allocated on the program heap, 
+but we will not go into those details here).  Once we have 
+an array, we can access individual elements in the array by 
+specifying an index:
+
+\begin{minted}{c}
+array[0] = 5;
+printf("the last element is %d\n", array[99]);
+\end{minted}
+
+You should take care that you do not access elements beyond 
+the range of the array's indices.  Indices start at 0 (first element) 
+and end one less than the size of the array.  Attempts to access 
+elements outside this range results in undefined behavior and 
+may result in a segmentation fault or other such run time error.
+
+Unfortunately, static arrays are quite limited and for most applications, 
+we will not know how big an array needs to be at compile time.  
+Instead, we typically need an array whose size is not known until 
+runtime.  Dynamic arrays provide such functionality.
+
+Dynamic arrays are arrays whose size is not specified at compile 
+time.  Rather, we write code such that at run time, a chunk of 
+memory is dynamically allocated to accommodate the space we 
+need to hold a certain number of variable values.  C provides a 
+family of functions to dynamically allocate memory in the standard 
+C library (\mintinline{text}{stdlib.h}): \mintinline{c}{malloc()}, 
+\mintinline{c}{calloc()} and \mintinline{c}{realloc()}.  
+
+In this lab, we will focus on malloc (memory allocation), which takes 
+exactly one argument: the number of bytes you wish to allocate in 
+memory.  To make our code portable, we do not hardcode the number 
+of bytes each type of variable requires.  Instead, we use the 
+\mintinline{c}{sizeof} operator to determine how many bytes each 
+type takes.  Finally, \mintinline{c}{malloc} returns a generic void 
+pointer (\mintinline{c}{void *}) because as far as \mintinline{c}{malloc} 
+is concerned, it is just allocating memory, it doesn't care what you 
+intend to use it for.  Therefore, it is best practice to explicitly type 
+case the void pointer into the type of pointer that we intend to use 
+it as.  Altogether, we have:
+
+\mintinline{c}{int *arr = (int *) malloc(sizeof(int) * 100);}
+
+This creates an array that is holds 100 integers.  Once allocated, 
+we can treat the array like any other static array with indices 
+starting at 0 just as before.
+
+Memory is a resource and when using dynamic memory, memory 
+management becomes an issue.  Memory management means 
+that we responsibly ``clean up'' after ourselves.  Once the dynamic 
+memory that was allocated is no longer needed, we need to tell 
+the operating system that we're done with it and that it should be 
+made available to be reused by our program or allow other 
+programs to use it.  We release memory by using the \mintinline{c}{free()} 
+function and passing it a pointer to our memory chunk:
+
+\mintinline{c}{free(arr);}
+
+Failure to release unneeded memory may result in a memory leak 
+whereby a program continually allocates memory but never releases 
+it, becoming a resource hog.  Eventually, the program uses so much 
+memory that it slows  to a halt or is terminated as the operating 
+system is unable or unwilling to allocate more resources to it.
+
+\section{Activities}
+
+Clone the repository from GitHub containing the code for this lab by using 
+the following URL: \url{https://github.com/cbourke/CSCE155-C-Lab07}.
+
+\subsection{Fixing a Memory Leak}
+
+In this exercise, we'll observe a memory leak in action and fix it.
+
+\subsubsection*{Instructions}
+\begin{enumerate}
+  \item Change to the \mintinline{text}{memoryLeak} directory
+  \item Build the executable using the \mintinline{text}{make} command.  
+  	Make is a utility that reads a makefile--a specification for source file 
+	dependencies and the process by which they are built.  The makefile 
+	for this project has been provided for you.
+  \item A program named \mintinline{text}{memLeak} will be created in your 
+	directory.  The program will generate an array of 500,000 integers 
+	using \mintinline{c}{malloc()} several times (the exact number is specified 
+	by the user as a command line argument).  It will then find a random 
+	$i$th Order Element and print the result to the screen.  
+  \item Open a second putty session (right click the putty icon on the task bar), 
+	and run the command \mintinline{text}{top -u login} where \mintinline{text}{login}
+	is replaced with your cse login.  This will open up a list of all of the 
+	processes currently being executed by you.  
+  \item In the first putty session, run the \mintinline{text}{memLeak} program 
+	and generate 40 different random lists by running \mintinline{text}{./memLeak 40}
+	(this may take some time).  
+  \item In the second putty session (the one running top), pay close attention 
+	to the \mintinline{text}{memLeak} program, specifically the column labeled ``RES''.  
+	This column will tell you the current amount of memory being used by a 
+	specific process.  
+  \item Keep track of how much memory it uses towards the end of its 
+	execution on your worksheet.  
+  \item Once the program is done, navigate to the \mintinline{text}{src} 
+	directory and open the file \mintinline{text}{memLeak.c}.  Fix the memory 
+	leak by adding a call to \mintinline{c}{free()} in the appropriate place 
+	(hint: it will be inside the loop in the \mintinline{text}{main()} function).  
+  \item Repeat steps 6--8.  Close top by typing `q'
+  \item Finish questions 1 and 2 on your worksheet
+\end{enumerate}
+  
+\subsection{Static Arrays}
+
+Navigate back to the statistics directory.  Several files have been 
+provided for you.  The \mintinline{text}{stats.c} and \mintinline{text}{stats.h} 
+file define several utility functions to manipulate arrays and to 
+compute statistics on those arrays.  The \mintinline{text}{statsMain.c} 
+file contains a main driver program.  Recall that you will compile 
+these files using:
+
+\begin{minted}{text}
+gcc -c stats.c
+gcc -o runStats stats.o statsMain.c
+\end{minted}
+
+In this activity, you will implement and use several functions that use 
+arrays as parameters.  When passed as a parameter to a function, 
+the function also needs to be told how large the array is; typically an 
+integer size variable is passed with any array parameter.  You will also 
+declare and populate a static array to test your functions.
+
+\subsubsection*{Instructions}
+
+\begin{enumerate}
+  \item A function, \mintinline{c}{readInArray} has been provided for you 
+	that takes an array and its size and prompts the user to enter values 
+	to populate the array.  However, there is an error in the function: 
+	examine the \mintinline{c}{scanf} call and determine what is wrong 
+	and fix it before proceeding.
+  \item Using the other functions as a reference, implement the 
+	\mintinline{c}{getMin}, \mintinline{c}{getMax}, and \mintinline{c}{getMean} 
+	functions.  You will need to provide the correct function signature 
+	in both the header file and source file.
+  \item In the \mintinline{text}{statsMain.c} declare a static array that is 
+	``large enough'' as indicated by the other clues in the code.  Use your 
+	declared static array as an argument to \mintinline{c}{readInArray} 
+	and the other function calls.
+  \item Run your program and demonstrate it to a lab instructor.
+\end{enumerate}
+
+\subsection{Dynamic Arrays}
+
+In this activity you will modify the code in \mintinline{text}{statsMain.c} to 
+use a dynamic array instead of a static array.
+
+\subsubsection*{Instructions}
+
+\begin{enumerate}
+  \item Alter your static array declaration to be an integer pointer and add 
+	code that calls malloc to initialize the appropriate amount of memory.
+  \item Alter any other code as necessary to remove the ``large enough'' 
+	restriction that we had in the previous activity.
+  \item Run your program again and demonstrate it to a lab instructor
+\end{enumerate}
+	
+\subsubsection*{Follow Up}
+
+Demonstrate your program using a ``large'' array.  Obviously prompting 
+for and entering a lot of numbers is tedious.  So instead, alter your code 
+again to instead take advantage of the \mintinline{c}{createRandomArray} 
+function provided for you.  Demonstrate it to a lab instructor and have 
+them sign your lab worksheet. 
+
+\section{Advanced Activity (Optional)}
+
+So far we've only been working with single dimensional arrays, but often 
+times it is important to represent something like a table or a matrix in 
+code.  One way to accomplish this is to use a multidimensional array.  
+You can declare a statically allocated 2D array with the statement 
+
+\mintinline{c}{int matrix[100][50];}
+
+You can think of 100 as the number of rows in the table and 50 as the 
+number of columns.  Begin by writing a program that will initialize a 
+matrix with some random numbers and find the average of each row 
+(you'll probably want to use nested for loops).  Once you've gotten 
+the hang of accessing the elements in a 2D matrix, try writing a 
+program that will find the product of two (square) matrices.  To assist 
+you, write a function that will automatically create a randomly 
+populated two dimensional array and return a reference to it (a 
+pointer to a pointer array!).
+
+\end{document}
